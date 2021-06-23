@@ -4,7 +4,7 @@ from mysql.connector import connect
 
 class ConnectionManager:
     db_cursor = None
-    db_engine = ''
+    db_engine = ""
 
     def __init__(self, model_class) -> None:
         self.model_class = model_class
@@ -15,18 +15,18 @@ class ConnectionManager:
 
     @classmethod
     def create_connection(cls, db_settings: dict):
-        cls.db_engine = db_settings.pop('ENGINE')
-        if cls.db_engine == 'mysql':
+        cls.db_engine = db_settings.pop("ENGINE")
+        if cls.db_engine == "mysql":
             cls.db_cursor = cls._connect_to_mysql(db_settings)
 
     @classmethod
     def _connect_to_mysql(cls, db_settings: dict):
         try:
-            db_name = db_settings.pop('db_name')
+            db_name = db_settings.pop("db_name")
             connection = connect(**db_settings)
             connection.autocommit = True
             cursor = connection.cursor()
-            cursor.execute(f'USE {db_name}')
+            cursor.execute(f"USE {db_name}")
             return cursor
         except Exception as e:
             print(e)
