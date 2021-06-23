@@ -1,5 +1,8 @@
 
-class BaseModel:
+from manager import MetaModel
+
+
+class BaseModel(metaclass=MetaModel):
     table_name = ""
 
     def __init__(self, **kwargs) -> None:
