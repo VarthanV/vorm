@@ -1,3 +1,4 @@
+import re
 from typing import Any
 from mysql.connector import connect
 
@@ -11,7 +12,7 @@ class ConnectionManager:
 
     @property
     def table_name(self):
-        return self.model.table_name
+        return self.model_class.table_name
 
     @classmethod
     def create_connection(cls, db_settings: dict):
@@ -39,11 +40,18 @@ class ConnectionManager:
     def _execute_query(cls, query, variables):
         cls.db_cursor.execute(query, variables)
 
-    def select(self, **kwargs) -> Any:
-        print(kwargs)
+    def select(self, *args) -> Any:
+      pass
 
     def raw(self, query: str):
         return self._execute_query(query)
+
+    def migrate(self,cls:Any) -> None:
+        pass    
+
+    def save(self):
+        print(self)
+        
 
 
 class MetaModel(type):
@@ -55,3 +63,13 @@ class MetaModel(type):
     @property
     def objects(cls) -> ConnectionManager:
         return cls._get_manager()
+    @property
+    def db_engine(self):
+        return self.objects.db_engine
+
+
+# Manager -> Exectues db transaction,connects with db ,retries ,checks idle connection
+
+# MetaClass -> bridges the manager and model mexposes specific methods from manager to model and required fields from model to manager
+
+# Model -> End user sees , Pythonic representation , Movie
