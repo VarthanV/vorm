@@ -1,6 +1,6 @@
-from base import *
-from manager import ConnectionManager
-from fields import *
+from vorm.base import *
+from vorm.manager import ConnectionManager
+from vorm.fields import *
 
 db_settings = {
     "ENGINE": "mysql",

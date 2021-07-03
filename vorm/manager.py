@@ -1,12 +1,14 @@
 import inspect
-from . fields import NotProvided
+from vorm.exceptions import VormAttributeError
+from .fields import NotProvided
 from typing import Any, List
 import mysql.connector as connector
 from . import fields
 from collections import namedtuple
 
 CREATE_TABLE_SQL = "CREATE TABLE {name} ({fields});"
-INSERT_SQL = 'INSERT INTO {name} ({fields}) VALUES ({placeholders});'
+INSERT_SQL = "INSERT INTO {name} ({fields}) VALUES ({placeholders});"
+
 
 class ConnectionManager:
     db_engine = ""
@@ -42,8 +44,10 @@ class ConnectionManager:
         return self.db_connection.cursor().execute(query)
 
     def migrate(self, table):
-        if not self.table_name :
-            pass
+        self.model_class = table
+        if not self.table_name:
+            raise VormAttributeError("Expected to have a table_name")
+
         _create_sql = self._get_create_sql(table)
         self._execute_query(query=_create_sql)
 
