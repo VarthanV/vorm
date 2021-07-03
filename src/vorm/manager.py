@@ -1,57 +1,94 @@
-import re
-from typing import Any
-from mysql.connector import connect
+import inspect
+from fields import NotProvided
+from typing import Any, List
+import mysql.connector as connector
+import fields
+from collections import namedtuple
+
+CREATE_TABLE_SQL = "CREATE TABLE {name} ({fields});"
 
 
 class ConnectionManager:
-    db_cursor = None
     db_engine = ""
-
-    def __init__(self, model_class) -> None:
-        self.model_class = model_class
+    db_connection = None
 
     @property
     def table_name(self):
-        return self.model_class.table_name
+        return self.model_class.table_name or self._get_table_name()
 
-    @classmethod
-    def create_connection(cls, db_settings: dict):
-        cls.db_engine = db_settings.pop("ENGINE")
-        if cls.db_engine == "mysql":
-            cls.db_cursor = cls._connect_to_mysql(db_settings)
+    def _get_table_name(self):
+        pass
 
-    @classmethod
-    def _connect_to_mysql(cls, db_settings: dict):
+    def create_connection(self, db_settings: dict):
+        self.db_engine = db_settings.pop("ENGINE")
+        if self.db_engine == "mysql":
+            self._connect_to_mysql(db_settings)
+
+    def __init__(self, db_settings) -> None:
+        self.create_connection(db_settings)
+
+    def _connect_to_mysql(self, db_settings: dict):
         try:
-            db_name = db_settings.pop("db_name")
-            connection = connect(**db_settings)
+            connection = connector.connect(**db_settings)
             connection.autocommit = True
-            cursor = connection.cursor()
-            cursor.execute(f"USE {db_name}")
-            return cursor
+            self.db_connection = connection
         except Exception as e:
             print(e)
+            return
 
-    @classmethod
-    def _get_cursor(cls):
-        return cls.db_cursor
+    def _get_cursor(self):
+        return self.db_connection.cursor()
 
-    @classmethod
-    def _execute_query(cls, query, variables):
-        cls.db_cursor.execute(query, variables)
+    def _execute_query(self, query, variables=None):
+        print(query)
+        if variables:
+            return self._get_cursor().execute(query, variables)
+        return self.db_connection.cursor().execute(query)
+
+    def migrate(self, table):
+        _create_sql = self._get_create_sql(table)
+        self._execute_query(query=_create_sql)
+
+    def _get_create_sql(self, table) -> List:
+        _fields_list = []
+        for name, field in inspect.getmembers(table):
+            attr_string = ""
+            if name.startswith("_") or name == "table_name":
+                continue
+            if isinstance(field, fields.CharField):
+                if field.max_length:
+                    attr_string += "VARCHAR({}) ".format(field.max_length)
+
+            if not isinstance(field, fields.CharField):
+                attr_string += "{} ".format(field.field_sql_name)
+
+            if field.primary_key:
+                attr_string += "PRIMARY KEY "
+
+            if not field.nullable:
+                attr_string += "NOT NULL "
+
+            if field.default is not NotProvided:
+                if isinstance(field, fields.CharField):
+                    attr_string += "DEFAULT '{}'".format(field.default)
+                elif isinstance(field, fields.IntegerField):
+                    attr_string += "DEFAULT {}".format(field.default)
+            _fields_list.append((name, attr_string))
+
+        _fields_list = [" ".join(x) for x in _fields_list]
+        return CREATE_TABLE_SQL.format(
+            name=table.table_name, fields=", ".join(_fields_list)
+        )
 
     def select(self, *args) -> Any:
-      pass
+        pass
 
     def raw(self, query: str):
         return self._execute_query(query)
 
-    def migrate(self,cls:Any) -> None:
-        pass    
-
-    def save(self):
-        print(self)
-        
+    @classmethod
+    def save(cls, table):
+        pass
 
 
 class MetaModel(type):
@@ -63,6 +100,7 @@ class MetaModel(type):
     @property
     def objects(cls) -> ConnectionManager:
         return cls._get_manager()
+
     @property
     def db_engine(self):
         return self.objects.db_engine
