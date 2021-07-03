@@ -1,4 +1,4 @@
-from manager import MetaModel
+from .manager import MetaModel
 
 
 class BaseModel(metaclass=MetaModel):

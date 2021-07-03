@@ -1,12 +1,12 @@
 import inspect
-from fields import NotProvided
+from . fields import NotProvided
 from typing import Any, List
 import mysql.connector as connector
-import fields
+from . import fields
 from collections import namedtuple
 
 CREATE_TABLE_SQL = "CREATE TABLE {name} ({fields});"
-
+INSERT_SQL = 'INSERT INTO {name} ({fields}) VALUES ({placeholders});'
 
 class ConnectionManager:
     db_engine = ""
@@ -15,9 +15,6 @@ class ConnectionManager:
     @property
     def table_name(self):
         return self.model_class.table_name or self._get_table_name()
-
-    def _get_table_name(self):
-        pass
 
     def create_connection(self, db_settings: dict):
         self.db_engine = db_settings.pop("ENGINE")
@@ -40,12 +37,13 @@ class ConnectionManager:
         return self.db_connection.cursor()
 
     def _execute_query(self, query, variables=None):
-        print(query)
         if variables:
             return self._get_cursor().execute(query, variables)
         return self.db_connection.cursor().execute(query)
 
     def migrate(self, table):
+        if not self.table_name :
+            pass
         _create_sql = self._get_create_sql(table)
         self._execute_query(query=_create_sql)
 
