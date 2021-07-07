@@ -4,58 +4,90 @@ from .fields import NotProvided
 from typing import Any, List
 import mysql.connector as connector
 from . import fields
-from collections import namedtuple
+from .types import Condition
+from pprint import pprint
 
-CREATE_TABLE_SQL = "CREATE TABLE {name} ({fields});"
-INSERT_SQL = "INSERT INTO {name} ({fields}) VALUES ({placeholders});"
+
+# https://stackoverflow.com/questions/775296/mysql-parameterized-queries
+
+
+class _Constants:
+    CREATE_TABLE_SQL = "CREATE TABLE {name} ({fields});"
+    INSERT_SQL = "INSERT INTO {name} ({fields}) VALUES ({placeholders});"
+    SELECT_WHERE_SQL = "SELECT {fields} FROM {name} WHERE {query};"
+    SELECT_ALL_SQL = "SELECT {fields} FROM {name};"
+    SEPERATOR = "__"
 
 
 class ConnectionManager:
     db_engine = ""
     db_connection = None
+    operators_map = {
+        "eq": "=",
+        "gt": ">",
+        "lt": "<",
+        "gte": ">=",
+        "lte": "<=",
+        "in": "IN",
+        "like": "LIKE",
+    }
+
+    def __init__(self, model_class) -> None:
+        self.model_class = model_class
 
     @property
     def table_name(self):
         return self.model_class.table_name or self._get_table_name()
 
-    def create_connection(self, db_settings: dict):
-        self.db_engine = db_settings.pop("ENGINE")
-        if self.db_engine == "mysql":
-            self._connect_to_mysql(db_settings)
+    @classmethod
+    def create_connection(cls, db_settings: dict):
+        cls.db_engine = db_settings.pop("ENGINE")
+        if cls.db_engine == "mysql":
+            cls._connect_to_mysql(db_settings)
 
-    def __init__(self, db_settings) -> None:
-        self.create_connection(db_settings)
-
-    def _connect_to_mysql(self, db_settings: dict):
+    @classmethod
+    def _connect_to_mysql(cls, db_settings: dict):
         try:
             connection = connector.connect(**db_settings)
             connection.autocommit = True
-            self.db_connection = connection
+            cls.db_connection = connection
         except Exception as e:
             print(e)
             return
 
-    def _get_cursor(self):
-        return self.db_connection.cursor()
+    @classmethod
+    def _get_cursor(cls):
+        return cls.db_connection.cursor()
 
-    def _execute_query(self, query, variables=None):
-        if variables:
-            return self._get_cursor().execute(query, variables)
-        return self.db_connection.cursor().execute(query)
+    @classmethod
+    def _execute_query(cls, query, variables=None):
+        cls._get_cursor().execute(query, variables)
 
-    def migrate(self, table):
-        self.model_class = table
-        if not self.table_name:
-            raise VormAttributeError("Expected to have a table_name")
+    @classmethod
+    def _evaluate_user_conditions(cls, conditions: dict) -> List:
+        conditions_list = []
+        for k, v in conditions.items():
+            val = k.split(_Constants.SEPERATOR)
+            condition = Condition(val[0], cls.operators_map[val[1]], v)
+            conditions_list.append(condition)
+        return conditions_list
 
-        _create_sql = self._get_create_sql(table)
-        self._execute_query(query=_create_sql)
+    @classmethod
+    def migrate(cls, table):
+        cls.model_class = table
+        if not cls.table_name:
+            raise ValueError("Expected to have a table_name")
 
-    def _get_create_sql(self, table) -> List:
+        _create_sql = cls._get_create_sql(table)
+        cls._execute_query(query=_create_sql)
+
+    @classmethod
+    def _get_create_sql(cls, table) -> List:
+        pprint(table)
         _fields_list = []
         for name, field in inspect.getmembers(table):
             attr_string = ""
-            if name.startswith("_") or name == "table_name":
+            if name.startswith("_") or name in ["table_name", "manager_class"]:
                 continue
             if isinstance(field, fields.CharField):
                 if field.max_length:
@@ -66,6 +98,9 @@ class ConnectionManager:
 
             if field.primary_key:
                 attr_string += "PRIMARY KEY "
+
+            if field.auto_increment:
+                attr_string += "AUTO_INCREMENT "
 
             if not field.nullable:
                 attr_string += "NOT NULL "
@@ -78,12 +113,39 @@ class ConnectionManager:
             _fields_list.append((name, attr_string))
 
         _fields_list = [" ".join(x) for x in _fields_list]
-        return CREATE_TABLE_SQL.format(
+        return _Constants.CREATE_TABLE_SQL.format(
             name=table.table_name, fields=", ".join(_fields_list)
         )
 
-    def select(self, *args) -> Any:
-        pass
+    @classmethod
+    def _get_parsed_value(cls, val):
+        if type(val) == str:
+            return "'{}'".format(val)
+        return val
+
+    @classmethod
+    def where(cls, **kwargs) -> List:
+        pprint(dir(cls))
+        condition_list = cls._evaluate_user_conditions(kwargs)
+        _sql_query = _Constants.SELECT_WHERE_SQL.format(
+            name="students",
+            fields="*",
+            query=" AND ".join(
+                [
+                    "`{}` {} {}".format(
+                        i.column, i.operator, cls._get_parsed_value(i.value)
+                    )
+                    for i in condition_list
+                ]
+            ),
+        )
+        cur2 = cls.db_connection.cursor(buffered=True, dictionary=True)
+        cur2.execute(_sql_query)
+        rows = cur2.fetchall()
+        result = []
+        for i in rows:
+            result.append(cls.model_class(**i))
+        return result
 
     def raw(self, query: str):
         return self._execute_query(query)
@@ -94,7 +156,7 @@ class ConnectionManager:
 
 
 class MetaModel(type):
-    manager = ConnectionManager
+    manager_class = ConnectionManager
 
     def _get_manager(cls) -> ConnectionManager:
         return cls.manager_class(model_class=cls)
@@ -113,3 +175,17 @@ class MetaModel(type):
 # MetaClass -> bridges the manager and model mexposes specific methods from manager to model and required fields from model to manager
 
 # Model -> End user sees , Pythonic representation , Movie
+
+
+# def eval(**kwargs):
+#   for k ,v in kwargs.items():
+#     val =  k.split('__')
+#     if val[1] == 'eq':
+#       s = (val[0],'=',v)
+#       print(s)
+#     if val[1] == 'gt' :
+#       s = (val[0],'>',v)
+#       print(s)
+
+
+# eval(name__eq = 'vishnu',age__gt= 30)

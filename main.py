@@ -11,7 +11,7 @@ db_settings = {
     "database": "pizza_shop",
 }
 
-c = ConnectionManager(db_settings)
+ConnectionManager.create_connection(db_settings)
 
 
 class Employee(BaseModel):
@@ -22,12 +22,16 @@ class Employee(BaseModel):
 
 
 class Student(BaseModel):
+    manager_class = ConnectionManager
     table_name = "students"
-    id = IntegerField(primary_key=True)
+    id = IntegerField(primary_key=True,auto_increment=True)
     name = CharField(max_length=250, nullable=False, default="Johny")
     standard = CharField(max_length=100, nullable=True)
     salary = IntegerField()
 
 
 # c.migrate(Employee)
-c.migrate(Student)
+#c.migrate(Student)
+#ConnectionManager.migrate(Student)
+students = Student.objects.where(name__eq='vishnu',salary__gte=2000)
+print(students)
