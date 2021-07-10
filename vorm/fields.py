@@ -55,3 +55,8 @@ class TimeField(BaseField):
 class DateTimeField(BaseField):
     field_sql_name = "DATETIME"
 
+
+class ForeignKey :
+    def __init__(self,table,nullable=True):
+        self.table = table
+        self.nullable = nullable

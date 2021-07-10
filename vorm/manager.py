@@ -36,7 +36,7 @@ class ConnectionManager:
         self.model_class = model_class
 
     @property
-    def table_name(self):
+    def table_name(self) -> str:
         return self.model_class.table_name or self._get_table_name()
 
     @classmethod
@@ -83,21 +83,26 @@ class ConnectionManager:
 
     @classmethod
     def _get_create_sql(cls, table) -> List:
-        pprint(table)
-        _fields_list = []
+        _fields_list = [
+            ('id', 'INT NOT NULL AUTO_INCREMENT PRIMARY KEY')
+        ]
         for name, field in inspect.getmembers(table):
             attr_string = ""
             if name.startswith("_") or name in ["table_name", "manager_class"]:
                 continue
+            if isinstance(field, fields.ForeignKey):
+                _col_name = "{}_id".format(name)
+                _fields_list.append((_col_name, 'INT'))
+                _fields_list.append(("FOREIGN KEY({column})".format(
+                    column=_col_name), "REFERENCES {table_name}({referred_column})".format(table_name=field.table.table_name, referred_column='id')))
+                continue
+
             if isinstance(field, fields.CharField):
                 if field.max_length:
                     attr_string += "VARCHAR({}) ".format(field.max_length)
 
             if not isinstance(field, fields.CharField):
                 attr_string += "{} ".format(field.field_sql_name)
-
-            if field.primary_key:
-                attr_string += "PRIMARY KEY "
 
             if field.auto_increment:
                 attr_string += "AUTO_INCREMENT "
@@ -111,7 +116,6 @@ class ConnectionManager:
                 elif isinstance(field, fields.IntegerField):
                     attr_string += "DEFAULT {}".format(field.default)
             _fields_list.append((name, attr_string))
-
         _fields_list = [" ".join(x) for x in _fields_list]
         return _Constants.CREATE_TABLE_SQL.format(
             name=table.table_name, fields=", ".join(_fields_list)
@@ -122,10 +126,13 @@ class ConnectionManager:
             return "'{}'".format(val)
         return val
 
+    def _dict_to_model_class(d, table):
+        return table(**d)
+
     def where(self, **kwargs) -> List:
         condition_list = self._evaluate_user_conditions(kwargs)
         _sql_query = _Constants.SELECT_WHERE_SQL.format(
-            name="students",
+            name=self.table_name,
             fields="*",
             query=" AND ".join(
                 [
@@ -141,7 +148,8 @@ class ConnectionManager:
         rows = cur2.fetchall()
         result = list()
         for i in rows:
-            result.append(self.model_class(**i))
+            result_class = self._dict_to_model_class(i, self.model_class)
+            result.append(result_class)
         return result
 
     def raw(self, query: str):

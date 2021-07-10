@@ -15,27 +15,27 @@ db_settings = {
 ConnectionManager.create_connection(db_settings)
 
 
-class Employee(BaseModel):
-    table_name = "employees"
-    name = fields.CharField(max_length=250, nullable=False, primary_key=True)
-    ted = fields.CharField(max_length=100, nullable=True)
-    salary = fields.IntegerField()
+
 
 
 class Student(BaseModel):
-    manager_class = ConnectionManager
     table_name = "students"
-    id = fields.IntegerField(primary_key=True,auto_increment=True)
     name = fields.CharField(max_length=250, nullable=False, default="Johny")
     standard = fields.CharField(max_length=100, nullable=True)
     salary = fields.IntegerField()
     created_at = fields.DateField()
 
 
+class Klass(BaseModel):
+    table_name="class"
+    name = fields.CharField(max_length=250,nullable=True)
+    student = fields.ForeignKey(Student)
 
-#ConnectionManager.migrate(Employee)
+
 #ConnectionManager.migrate(Student)
 #ConnectionManager.migrate(Student)
+ConnectionManager.migrate(Klass)
+# ConnectionManager.migrate(Employee)
 students = Student.objects.where(name__eq='vishnu',salary__gte=2000)
 for i in students :
     print(i.name)
