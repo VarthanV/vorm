@@ -117,34 +117,31 @@ class ConnectionManager:
             name=table.table_name, fields=", ".join(_fields_list)
         )
 
-    @classmethod
-    def _get_parsed_value(cls, val):
+    def _get_parsed_value(self, val):
         if type(val) == str:
             return "'{}'".format(val)
         return val
 
-    @classmethod
-    def where(cls, **kwargs) -> List:
-        pprint(dir(cls))
-        condition_list = cls._evaluate_user_conditions(kwargs)
+    def where(self, **kwargs) -> List:
+        condition_list = self._evaluate_user_conditions(kwargs)
         _sql_query = _Constants.SELECT_WHERE_SQL.format(
             name="students",
             fields="*",
             query=" AND ".join(
                 [
                     "`{}` {} {}".format(
-                        i.column, i.operator, cls._get_parsed_value(i.value)
+                        i.column, i.operator, self._get_parsed_value(i.value)
                     )
                     for i in condition_list
                 ]
             ),
         )
-        cur2 = cls.db_connection.cursor(buffered=True, dictionary=True)
+        cur2 = self.db_connection.cursor(buffered=True, dictionary=True)
         cur2.execute(_sql_query)
         rows = cur2.fetchall()
-        result = []
+        result = list()
         for i in rows:
-            result.append(cls.model_class(**i))
+            result.append(self.model_class(**i))
         return result
 
     def raw(self, query: str):

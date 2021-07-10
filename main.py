@@ -1,6 +1,7 @@
+from os import PRIO_PGRP
 from vorm.base import *
 from vorm.manager import ConnectionManager
-from vorm.fields import *
+from vorm import fields
 
 db_settings = {
     "ENGINE": "mysql",
@@ -16,22 +17,26 @@ ConnectionManager.create_connection(db_settings)
 
 class Employee(BaseModel):
     table_name = "employees"
-    name = CharField(max_length=250, nullable=False, primary_key=True)
-    ted = CharField(max_length=100, nullable=True)
-    salary = IntegerField()
+    name = fields.CharField(max_length=250, nullable=False, primary_key=True)
+    ted = fields.CharField(max_length=100, nullable=True)
+    salary = fields.IntegerField()
 
 
 class Student(BaseModel):
     manager_class = ConnectionManager
     table_name = "students"
-    id = IntegerField(primary_key=True,auto_increment=True)
-    name = CharField(max_length=250, nullable=False, default="Johny")
-    standard = CharField(max_length=100, nullable=True)
-    salary = IntegerField()
+    id = fields.IntegerField(primary_key=True,auto_increment=True)
+    name = fields.CharField(max_length=250, nullable=False, default="Johny")
+    standard = fields.CharField(max_length=100, nullable=True)
+    salary = fields.IntegerField()
+    created_at = fields.DateField()
 
 
-# c.migrate(Employee)
-#c.migrate(Student)
+
+#ConnectionManager.migrate(Employee)
+#ConnectionManager.migrate(Student)
 #ConnectionManager.migrate(Student)
 students = Student.objects.where(name__eq='vishnu',salary__gte=2000)
-print(students)
+for i in students :
+    print(i.name)
+
