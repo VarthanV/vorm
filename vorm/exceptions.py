@@ -1,0 +1,2 @@
+class VormAttributeError(Exception):
+    pass
