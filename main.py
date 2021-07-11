@@ -1,4 +1,5 @@
 from os import PRIO_PGRP
+from pprint import pprint
 from vorm.base import *
 from vorm.manager import ConnectionManager
 from vorm import fields
@@ -40,4 +41,5 @@ class Klass(BaseModel):
 # for i in students :
 #     print(i.name)
 
-Student.objects.insert(name='vishnu',salary=50000)
+s = Student.objects.get_one(name__eq='vishnu',salary__eq=50000)
+print(s.name)

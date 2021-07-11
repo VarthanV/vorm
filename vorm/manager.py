@@ -129,7 +129,7 @@ class ConnectionManager:
     def _dict_to_model_class(self, d, table):
         return table(**d)
 
-    def where(self, fetch_relations=False, **kwargs) -> List:
+    def where(self, fetch_relations=False, limit=None, **kwargs) -> List:
         condition_list = self._evaluate_user_conditions(kwargs)
         _sql_query = _Constants.SELECT_WHERE_SQL.format(
             name=self.table_name,
@@ -144,17 +144,24 @@ class ConnectionManager:
             ),
         )
         cur2 = self.db_connection.cursor(buffered=True, dictionary=True)
+        if limit:
+            _sql_query += ' LIMIT {limit} '.format(limit=limit)
         cur2.execute(_sql_query)
         rows = cur2.fetchall()
         result = list()
+        if limit == 1:
+            return self._dict_to_model_class(rows[0], self.model_class)
         for i in rows:
             result_class = self._dict_to_model_class(i, self.model_class)
             result.append(result_class)
         return result
 
+    def get_one(self, **kwargs):
+        return self.where(limit=1, **kwargs)
+
     def insert(self, **kwargs):
-        fields = []
-        values = []
+        fields = list()
+        values = list()
         for k, v in kwargs.items():
             fields.append(k)
             values.append(v)
