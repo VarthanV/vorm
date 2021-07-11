@@ -15,6 +15,7 @@ class _Constants:
     SELECT_ALL_SQL = "SELECT {fields} FROM {name};"
     SEPERATOR = "__"
     FIELDS_TO_EXCLUDE_IN_INSPECTION = ["table_name", "manager_class"]
+    KNOWN_CLASSES = (int, float, str, tuple)
 
 
 class ConnectionManager:
@@ -68,9 +69,16 @@ class ConnectionManager:
     @classmethod
     def _evaluate_user_conditions(cls, conditions: dict) -> List:
         conditions_list = []
+        condition = None
         for k, v in conditions.items():
-            val = k.split(_Constants.SEPERATOR)
-            condition = Condition(val[0], cls.operators_map[val[1]], v)
+            if not isinstance(v, _Constants.KNOWN_CLASSES):
+                class_name = v.__class__.__name__.lower()
+                col_name = f"{class_name}_id"
+                condition = Condition(col_name, cls.operators_map["eq"], v.id)
+
+            else:
+                val = k.split(_Constants.SEPERATOR)
+                condition = Condition(val[0], cls.operators_map[val[1]], v)
             conditions_list.append(condition)
         return conditions_list
 
@@ -157,6 +165,7 @@ class ConnectionManager:
                 ]
             ),
         )
+        print(_sql_query)
         self.db_connection.reconnect()
         cur2 = self.db_connection.cursor(buffered=True, dictionary=True)
         if limit:

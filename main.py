@@ -1,7 +1,6 @@
-from os import PRIO_PGRP
 from pprint import pprint
 import vorm
-from vorm.manager import ConnectionManager
+from vorm.manager import ConnectionManager as db
 from vorm.base import *
 from vorm import fields
 
@@ -14,7 +13,7 @@ db_settings = {
     "database": "pizza_shop",
 }
 
-ConnectionManager.create_connection(db_settings)
+db.create_connection(db_settings)
 
 
 class Student(BaseModel):
@@ -46,6 +45,7 @@ class Klass(BaseModel):
 # print(k)
 
 k = Klass.objects.where(name__eq='A', fetch_relations=True)
-s = Student.objects.get_one(id__eq=1)
-
-klass_student_has_enrolled = Klass.objects.where(student_id__eq=s.id)
+s = Student.objects.where(id__eq=1)
+print(s[0].name)
+klass_student_has_enrolled = Klass.objects.where(student__eq=s[0])
+print(klass_student_has_enrolled)
