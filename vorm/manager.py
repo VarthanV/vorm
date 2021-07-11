@@ -8,15 +8,13 @@ from .types import Condition
 from pprint import pprint
 
 
-# https://stackoverflow.com/questions/775296/mysql-parameterized-queries
-
-
 class _Constants:
     CREATE_TABLE_SQL = "CREATE TABLE {name} ({fields});"
     INSERT_SQL = "INSERT INTO {name} ({fields}) VALUES ({placeholders});"
     SELECT_WHERE_SQL = "SELECT {fields} FROM {name} WHERE {query};"
     SELECT_ALL_SQL = "SELECT {fields} FROM {name};"
     SEPERATOR = "__"
+    FIELDS_TO_EXCLUDE_IN_INSPECTION = ["table_name", "manager_class"]
 
 
 class ConnectionManager:
@@ -38,6 +36,10 @@ class ConnectionManager:
     @property
     def table_name(self) -> str:
         return self.model_class.table_name or self._get_table_name()
+
+    @property
+    def _get_fields(self):
+        cursor = self._get_cursor()
 
     @classmethod
     def create_connection(cls, db_settings: dict):
@@ -88,13 +90,16 @@ class ConnectionManager:
         ]
         for name, field in inspect.getmembers(table):
             attr_string = ""
-            if name.startswith("_") or name in ["table_name", "manager_class"]:
+            if name.startswith("_") or name in _Constants.FIELDS_TO_EXCLUDE_IN_INSPECTION:
                 continue
             if isinstance(field, fields.ForeignKey):
                 _col_name = "{}_id".format(name)
                 _fields_list.append((_col_name, 'INT'))
-                _fields_list.append(("FOREIGN KEY({column})".format(
-                    column=_col_name), "REFERENCES {table_name}({referred_column})".format(table_name=field.table.table_name, referred_column='id')))
+                _fields_list.append(
+                    ("FOREIGN KEY({column})".format(
+                        column=_col_name),
+                        "REFERENCES {table_name}({referred_column})".
+                        format(table_name=field.table.table_name, referred_column='id')))
                 continue
 
             if isinstance(field, fields.CharField):
@@ -124,12 +129,21 @@ class ConnectionManager:
     def _get_parsed_value(self, val):
         if type(val) == str:
             return "'{}'".format(val)
-        return val
+        return str(val)
 
-    def _dict_to_model_class(d, table):
+    def _dict_to_model_class(self, d, table):
         return table(**d)
 
-    def where(self, **kwargs) -> List:
+    def _return_foreign_keys_from_a_table(self, model_class, query_dict):
+        for name, field in inspect.getmembers(model_class):
+            if isinstance(field, fields.ForeignKey):
+                column_name = '{}_id'.format(name)
+                result_set = field.table.objects.where(
+                    id__eq=query_dict[column_name])
+                setattr(model_class, name, result_set)
+        return model_class
+
+    def where(self, fetch_relations=False, limit=None, **kwargs) -> List:
         condition_list = self._evaluate_user_conditions(kwargs)
         _sql_query = _Constants.SELECT_WHERE_SQL.format(
             name=self.table_name,
@@ -143,20 +157,46 @@ class ConnectionManager:
                 ]
             ),
         )
+        self.db_connection.reconnect()
         cur2 = self.db_connection.cursor(buffered=True, dictionary=True)
+        if limit:
+            _sql_query += ' LIMIT {limit} '.format(limit=limit)
         cur2.execute(_sql_query)
         rows = cur2.fetchall()
         result = list()
+        if limit == 1:
+            return self._dict_to_model_class(rows[0], self.model_class)
+
         for i in rows:
             result_class = self._dict_to_model_class(i, self.model_class)
+            if fetch_relations:
+                result_class = self._return_foreign_keys_from_a_table(
+                    result_class, i)
+
             result.append(result_class)
         return result
+
+    def get_one(self, **kwargs):
+        return self.where(limit=1, **kwargs)
+
+    def insert(self, **kwargs):
+        fields = list()
+        values = list()
+        for k, v in kwargs.items():
+            fields.append(k)
+            values.append(v)
+        _sql_query = _Constants.INSERT_SQL.format(
+            name='`{}`'.format(self.table_name),
+            fields=' , '.join(
+                ['`{}`'.format(i) for i in fields]),
+            placeholders=' , '.join([self._get_parsed_value(i) for i in values]))
+        self._get_cursor().execute(_sql_query)
 
     def raw(self, query: str):
         return self._execute_query(query)
 
-    @classmethod
-    def save(cls, table):
+    @ classmethod
+    def save(cls):
         pass
 
 
@@ -166,31 +206,10 @@ class MetaModel(type):
     def _get_manager(cls) -> ConnectionManager:
         return cls.manager_class(model_class=cls)
 
-    @property
+    @ property
     def objects(cls) -> ConnectionManager:
         return cls._get_manager()
 
-    @property
+    @ property
     def db_engine(self):
         return self.objects.db_engine
-
-
-# Manager -> Exectues db transaction,connects with db ,retries ,checks idle connection
-
-# MetaClass -> bridges the manager and model mexposes specific methods from manager to model and required fields from model to manager
-
-# Model -> End user sees , Pythonic representation , Movie
-
-
-# def eval(**kwargs):
-#   for k ,v in kwargs.items():
-#     val =  k.split('__')
-#     if val[1] == 'eq':
-#       s = (val[0],'=',v)
-#       print(s)
-#     if val[1] == 'gt' :
-#       s = (val[0],'>',v)
-#       print(s)
-
-
-# eval(name__eq = 'vishnu',age__gt= 30)
