@@ -165,7 +165,6 @@ class ConnectionManager:
                 ]
             ),
         )
-        print(_sql_query)
         self.db_connection.reconnect()
         cur2 = self.db_connection.cursor(buffered=True, dictionary=True)
         if limit:
