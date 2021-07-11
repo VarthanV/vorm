@@ -44,7 +44,7 @@ class ConnectionManager:
 
     @classmethod
     def create_connection(cls, db_settings: dict):
-        cls.db_engine = db_settings.pop("ENGINE")
+        cls.db_engine = db_settings.pop("driver")
         if cls.db_engine == "mysql":
             cls._connect_to_mysql(db_settings)
 
@@ -85,7 +85,7 @@ class ConnectionManager:
     @classmethod
     def migrate(cls, table):
         cls.model_class = table
-        if not cls.table_name:
+        if not table.table_name:
             raise ValueError("Expected to have a table_name")
 
         _create_sql = cls._get_create_sql(table)

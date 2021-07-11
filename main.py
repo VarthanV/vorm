@@ -1,3 +1,4 @@
+from os import name
 from pprint import pprint
 import vorm
 from vorm.manager import ConnectionManager as db
@@ -5,7 +6,7 @@ from vorm.base import *
 from vorm import fields
 
 db_settings = {
-    "ENGINE": "mysql",
+    "driver": "mysql",
     "user": "root",
     "password": "root1234",
     "host": "localhost",
@@ -43,6 +44,24 @@ class Klass(BaseModel):
 
 # k = Klass.objects.get_one(id__eq=1)
 # print(k)
+
+class Pizza(BaseModel):
+    table_name="pizza"
+    name = fields.CharField(max_length=200)
+
+class Juice(BaseModel):
+    table_name="juice"
+    name = fields.CharField(max_length=300)
+
+class Shop(BaseModel):
+    table_name="shop"
+    name = fields.CharField(max_length=200)
+    juices = fields.ForeignKey(Juice)
+    pizzas = fields.ForeignKey(Pizza)
+
+db.migrate(Pizza)
+db.migrate(Juice)
+db.migrate(Shop)
 
 k = Klass.objects.where(name__eq='A', fetch_relations=True)
 s = Student.objects.where(id__eq=1)
