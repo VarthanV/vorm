@@ -124,12 +124,12 @@ class ConnectionManager:
     def _get_parsed_value(self, val):
         if type(val) == str:
             return "'{}'".format(val)
-        return val
+        return str(val)
 
-    def _dict_to_model_class(d, table):
+    def _dict_to_model_class(self, d, table):
         return table(**d)
 
-    def where(self, **kwargs) -> List:
+    def where(self, fetch_relations=False, **kwargs) -> List:
         condition_list = self._evaluate_user_conditions(kwargs)
         _sql_query = _Constants.SELECT_WHERE_SQL.format(
             name=self.table_name,
@@ -152,10 +152,20 @@ class ConnectionManager:
             result.append(result_class)
         return result
 
+    def insert(self, **kwargs):
+        fields = []
+        values = []
+        for k, v in kwargs.items():
+            fields.append(k)
+            values.append(v)
+        _sql_query = _Constants.INSERT_SQL.format(name='`{}`'.format(self.table_name), fields=' , '.join(
+            ['`{}`'.format(i) for i in fields]), placeholders=' , '.join([self._get_parsed_value(i) for i in values]))
+        self._get_cursor().execute(_sql_query)
+
     def raw(self, query: str):
         return self._execute_query(query)
 
-    @classmethod
+    @ classmethod
     def save(cls, table):
         pass
 
@@ -166,11 +176,11 @@ class MetaModel(type):
     def _get_manager(cls) -> ConnectionManager:
         return cls.manager_class(model_class=cls)
 
-    @property
+    @ property
     def objects(cls) -> ConnectionManager:
         return cls._get_manager()
 
-    @property
+    @ property
     def db_engine(self):
         return self.objects.db_engine
 

@@ -34,9 +34,10 @@ class Klass(BaseModel):
 
 #ConnectionManager.migrate(Student)
 #ConnectionManager.migrate(Student)
-ConnectionManager.migrate(Klass)
+#ConnectionManager.migrate(Klass)
 # ConnectionManager.migrate(Employee)
-students = Student.objects.where(name__eq='vishnu',salary__gte=2000)
-for i in students :
-    print(i.name)
+# students = Student.objects.where(name__eq='vishnu',salary__gte=2000)
+# for i in students :
+#     print(i.name)
 
+Student.objects.insert(name='vishnu',salary=50000)
