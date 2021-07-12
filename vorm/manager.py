@@ -1,11 +1,8 @@
 import inspect
-from vorm.exceptions import VormAttributeError
-from .fields import NotProvided
-from typing import Any, List
+from typing import List
 import mysql.connector as connector
 from . import fields
 from .types import Condition
-from pprint import pprint
 
 
 class _Constants:
@@ -17,7 +14,7 @@ class _Constants:
     FIELDS_TO_EXCLUDE_IN_INSPECTION = ["table_name", "manager_class"]
     KNOWN_CLASSES = (int, float, str, tuple)
     OP_EQUAL = 'eq'
-    GET_LAST_INSERTED_ID = "SELECT LAST_INSERT_ID() as id;"
+    GET_LAST_INSERTED_ID_SQL = "SELECT LAST_INSERT_ID() as id;"
 
 
 class ConnectionManager:
@@ -38,7 +35,14 @@ class ConnectionManager:
 
     @property
     def table_name(self) -> str:
-        return self.model_class.table_name or self._get_table_name()
+        """
+        Returns the table name
+
+        Returns :
+            table_name:  A string which has the table name.
+        """
+
+        return self.model_class.table_name
 
     @property
     def _get_fields(self):
@@ -46,31 +50,77 @@ class ConnectionManager:
 
     @classmethod
     def create_connection(cls, db_settings: dict):
+        """
+        Creates a db connection to the specified DB driver
+        and 
+
+        Parameters:
+            db_settings(dict): The dict which contains the connection 
+            details of the driver to be connected.
+
+        Returns :
+            None    
+        """
+
         cls.db_engine = db_settings.pop("driver")
         if cls.db_engine == "mysql":
             cls._connect_to_mysql(db_settings)
 
     @classmethod
     def _connect_to_mysql(cls, db_settings: dict):
+        """
+        Connects to a MYSQL DB ,It is a internal which will will be used
+        by the create_connection method and sets the returned connection to
+        the db_connection attribute
+
+        Parameters:
+            db_settings(dict): The dict which contains the connection 
+            details of the driver to be connected. 
+
+        Returns:
+            None    
+        """
+
         try:
             connection = connector.connect(**db_settings)
             connection.autocommit = True
             cls.db_connection = connection
         except Exception as e:
-            print(e)
-            return
+            raise Exception(e)
 
     @classmethod
     def _get_cursor(cls):
-        return cls.db_connection.cursor()
+        """
+        Returns the cursor of the current db_connection
+
+        Parameters:
+            None
+
+        Returns:
+            cursor(Any) : The cursor object  
+        """
+
+        if(not cls.db_connection.is_connected()):
+            cls.db_connection.reconnect(attempts=2)
+        return cls.db_connection.cursor(buffered=True, dictionary=True)
 
     @classmethod
     def _execute_query(cls, query, variables=None):
-        cls._get_cursor().execute(query, variables)
+        """
+        Executes the query that is passed by the caller , Gets the cursor
+        from the current db_connection  , Throws error if there are any that is
+        caused by the gluing library
 
-    def prepare_new_cursor(self):
-        cur = self.db_connection.cursor(buffered=True, dictionary=True)
-        return cur
+        Parameters:
+            query(str) : A valid SQL Query
+            variable(tuples|None) : The actual variables which  are needed to be replaced
+            in place of placeholders.
+
+        Returns :
+            result(Any)    
+        """
+
+        return cls._get_cursor().execute(query, variables)
 
     @classmethod
     def _evaluate_user_conditions(cls, conditions: dict) -> List:
@@ -95,6 +145,24 @@ class ConnectionManager:
 
     @classmethod
     def migrate(cls, table):
+        """
+        A wrapper for the CREATE TABLE query of the respective
+        DB drivers
+
+        Parameters :
+            table(BaseModel)  : The class which inherits base model and has 
+            the required fields and their types mentioned.
+        Example :
+            class Student(BaseModel):
+                table_name = "students"
+                name = fields.CharField(max_length=250, nullable=False)
+                standard = fields.CharField(max_length=100,nullable=False)
+                age =      fields.IntegerField()
+                created_at = fields.DateField()
+
+        Returns :
+            result(Any)    
+        """
         cls.model_class = table
         if not table.table_name:
             raise ValueError("Expected to have a table_name")
@@ -103,7 +171,7 @@ class ConnectionManager:
         cls._execute_query(query=_create_sql)
 
     @classmethod
-    def _get_create_sql(cls, table) -> List:
+    def _get_create_sql(cls, table) -> str:
         _fields_list = [
             ('id', 'INT NOT NULL AUTO_INCREMENT PRIMARY KEY')
         ]
@@ -139,7 +207,7 @@ class ConnectionManager:
             if not field.nullable:
                 attr_string += "NOT NULL "
 
-            if field.default is not NotProvided:
+            if field.default is not fields.NotProvided:
                 if isinstance(field, fields.CharField):
                     attr_string += "DEFAULT '{}'".format(field.default)
                 elif isinstance(field, fields.IntegerField):
@@ -225,20 +293,16 @@ class ConnectionManager:
                 ['`{}`'.format(i) for i in fields]),
             placeholders=' , '.join([self._get_parsed_value(i) for i in values]))
         err = self._get_cursor().execute(_sql_query)
+
         if not err:
-            cur = self.prepare_new_cursor()
-            cur.execute(_Constants.GET_LAST_INSERTED_ID)
+            cur = self._get_cursor()
+            cur.execute(_Constants.GET_LAST_INSERTED_ID_SQL)
             last_inserted_id = cur.fetchone()
-            _modified_kwargs = kwargs.copy()
-            _modified_kwargs['id'] = last_inserted_id['id']
-        return self._dict_to_model_class(_modified_kwargs, self.model_class)
+            kwargs['id'] = last_inserted_id['id']
+        return self._dict_to_model_class(kwargs, self.model_class)
 
     def raw(self, query: str):
         return self._execute_query(query)
-
-    @ classmethod
-    def save(cls):
-        pass
 
 
 class MetaModel(type):

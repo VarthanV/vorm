@@ -1,6 +1,4 @@
 from os import name
-from pprint import pprint
-import vorm
 from vorm.manager import ConnectionManager as db
 from vorm.base import *
 from vorm import fields
@@ -31,20 +29,6 @@ class Klass(BaseModel):
     student = fields.ForeignKey(Student)
 
 
-# ConnectionManager.migrate(Student)
-# ConnectionManager.migrate(Student)
-# ConnectionManager.migrate(Klass)
-# ConnectionManager.migrate(Employee)
-# students = Student.objects.where(name__eq='vishnu',salary__gte=2000)
-# for i in students :
-#     print(i.name)
-
-# s = Student.objects.get_one(name__eq='vishnu',salary__eq=50000)
-# print(s.name)
-
-# k = Klass.objects.get_one(id__eq=1)
-# print(k)
-
 class Pizza(BaseModel):
     table_name="pizza"
     name = fields.CharField(max_length=200)
@@ -59,17 +43,11 @@ class Shop(BaseModel):
     juices = fields.ForeignKey(Juice)
     pizzas = fields.ForeignKey(Pizza)
 
-# db.migrate(Pizza)
-# db.migrate(Juice)
-# db.migrate(Shop)
-
 k = Klass.objects.where(name='A', fetch_relations=True)
-s = Student.objects.where(id=1)
-print(s[0].name)
+s = Student.objects.where(id__gte=1)
 j = Juice.objects.insert(name="test")
 pizza = Pizza.objects.insert(name="testp")
 shop =  Shop.objects.insert(juices =j ,pizzas=pizza)
-
 klass_student_has_enrolled = Klass.objects.where(student=s[0])
 print(klass_student_has_enrolled)
 sj   = Shop.objects.get_one(id=1,fetch_relations=True)
