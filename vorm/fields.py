@@ -55,7 +55,9 @@ class TimeField(BaseField):
 class DateTimeField(BaseField):
     field_sql_name = "DATETIME"
 
-
+class BooleanField(BaseField) :
+    field_sql_name = "TINYINT"
+    
 class ForeignKey :
     def __init__(self,table,nullable=True):
         self.table = table

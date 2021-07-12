@@ -96,6 +96,7 @@ class ConnectionManager:
         _fields_list = [
             ('id', 'INT NOT NULL AUTO_INCREMENT PRIMARY KEY')
         ]
+        
         for name, field in inspect.getmembers(table):
             attr_string = ""
             if name.startswith("_") or name in _Constants.FIELDS_TO_EXCLUDE_IN_INSPECTION:
@@ -137,6 +138,9 @@ class ConnectionManager:
     def _get_parsed_value(self, val):
         if type(val) == str:
             return "'{}'".format(val)
+        elif type(val) == bool :
+            return int(val)
+
         return str(val)
 
     def _dict_to_model_class(self, d, table):
