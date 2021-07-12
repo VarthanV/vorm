@@ -66,5 +66,13 @@ class Shop(BaseModel):
 k = Klass.objects.where(name='A', fetch_relations=True)
 s = Student.objects.where(id=1)
 print(s[0].name)
+j = Juice.objects.insert(name="test")
+pizza = Pizza.objects.insert(name="testp")
+shop =  Shop.objects.insert(juices =j ,pizzas=pizza)
+
 klass_student_has_enrolled = Klass.objects.where(student=s[0])
 print(klass_student_has_enrolled)
+sj   = Shop.objects.get_one(id=1,fetch_relations=True)
+print(sj.juices)
+for j in sj.juices:
+    print(j)

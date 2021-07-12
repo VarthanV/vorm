@@ -17,6 +17,7 @@ class _Constants:
     FIELDS_TO_EXCLUDE_IN_INSPECTION = ["table_name", "manager_class"]
     KNOWN_CLASSES = (int, float, str, tuple)
     OP_EQUAL = 'eq'
+    GET_LAST_INSERTED_ID = "SELECT LAST_INSERT_ID() as id;"
 
 
 class ConnectionManager:
@@ -66,6 +67,10 @@ class ConnectionManager:
     @classmethod
     def _execute_query(cls, query, variables=None):
         cls._get_cursor().execute(query, variables)
+
+    def prepare_new_cursor(self):
+        cur = self.db_connection.cursor(buffered=True, dictionary=True)
+        return cur
 
     @classmethod
     def _evaluate_user_conditions(cls, conditions: dict) -> List:
@@ -183,12 +188,10 @@ class ConnectionManager:
         cur2 = self.db_connection.cursor(buffered=True, dictionary=True)
         if limit:
             _sql_query += ' LIMIT {limit} '.format(limit=limit)
+
         cur2.execute(_sql_query)
         rows = cur2.fetchall()
         result = list()
-        if limit == 1:
-            return self._dict_to_model_class(rows[0], self.model_class)
-
         for i in rows:
             result_class = self._dict_to_model_class(i, self.model_class)
             if fetch_relations:
@@ -198,21 +201,37 @@ class ConnectionManager:
             result.append(result_class)
         return result
 
-    def get_one(self,fetch_relations=False, **kwargs):
-        return self.where(limit=1, fetch_relations=fetch_relations, **kwargs)
+    def get_one(self, fetch_relations=False, **kwargs):
+        result = self.where(limit=1, fetch_relations=fetch_relations, **kwargs)
+        if not len(result):
+            return None
+        return result[0]
 
     def insert(self, **kwargs):
         fields = list()
         values = list()
         for k, v in kwargs.items():
-            fields.append(k)
-            values.append(v)
+            key = k
+            value = v
+            if not isinstance(v, _Constants.KNOWN_CLASSES):
+                key = "{}_id".format(k)
+                value = v.id
+            fields.append(key)
+            values.append(value)
+
         _sql_query = _Constants.INSERT_SQL.format(
             name='`{}`'.format(self.table_name),
             fields=' , '.join(
                 ['`{}`'.format(i) for i in fields]),
             placeholders=' , '.join([self._get_parsed_value(i) for i in values]))
-        self._get_cursor().execute(_sql_query)
+        err = self._get_cursor().execute(_sql_query)
+        if not err:
+            cur = self.prepare_new_cursor()
+            cur.execute(_Constants.GET_LAST_INSERTED_ID)
+            last_inserted_id = cur.fetchone()
+            _modified_kwargs = kwargs.copy()
+            _modified_kwargs['id'] = last_inserted_id['id']
+        return self._dict_to_model_class(_modified_kwargs, self.model_class)
 
     def raw(self, query: str):
         return self._execute_query(query)
