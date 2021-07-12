@@ -96,7 +96,7 @@ class ConnectionManager:
         _fields_list = [
             ('id', 'INT NOT NULL AUTO_INCREMENT PRIMARY KEY')
         ]
-        
+
         for name, field in inspect.getmembers(table):
             attr_string = ""
             if name.startswith("_") or name in _Constants.FIELDS_TO_EXCLUDE_IN_INSPECTION:
@@ -112,7 +112,10 @@ class ConnectionManager:
                 continue
 
             if isinstance(field, fields.CharField):
-                if field.max_length:
+                if not field.max_length :
+                    raise ValueError("A char field always requires a max_length property")
+
+                else :
                     attr_string += "VARCHAR({}) ".format(field.max_length)
 
             if not isinstance(field, fields.CharField):
