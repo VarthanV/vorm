@@ -198,8 +198,8 @@ class ConnectionManager:
             result.append(result_class)
         return result
 
-    def get_one(self, **kwargs):
-        return self.where(limit=1, **kwargs)
+    def get_one(self,fetch_relations=False, **kwargs):
+        return self.where(limit=1, fetch_relations=fetch_relations, **kwargs)
 
     def insert(self, **kwargs):
         fields = list()
