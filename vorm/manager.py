@@ -16,6 +16,7 @@ class _Constants:
     SEPERATOR = "__"
     FIELDS_TO_EXCLUDE_IN_INSPECTION = ["table_name", "manager_class"]
     KNOWN_CLASSES = (int, float, str, tuple)
+    OP_EQUAL = 'eq'
 
 
 class ConnectionManager:
@@ -78,7 +79,12 @@ class ConnectionManager:
 
             else:
                 val = k.split(_Constants.SEPERATOR)
-                condition = Condition(val[0], cls.operators_map[val[1]], v)
+                """ Fallback to OP_EQUAL if he didnt mention any operator"""
+                if len(val) == 1:
+                    operator = cls.operators_map[_Constants.OP_EQUAL]
+                    condition = Condition(val[0], operator, v)
+                else:
+                    condition = Condition(val[0], cls.operators_map[val[1]], v)
             conditions_list.append(condition)
         return conditions_list
 
@@ -112,10 +118,11 @@ class ConnectionManager:
                 continue
 
             if isinstance(field, fields.CharField):
-                if not field.max_length :
-                    raise ValueError("A char field always requires a max_length property")
+                if not field.max_length:
+                    raise ValueError(
+                        "A char field always requires a max_length property")
 
-                else :
+                else:
                     attr_string += "VARCHAR({}) ".format(field.max_length)
 
             if not isinstance(field, fields.CharField):
@@ -141,7 +148,7 @@ class ConnectionManager:
     def _get_parsed_value(self, val):
         if type(val) == str:
             return "'{}'".format(val)
-        elif type(val) == bool :
+        elif type(val) == bool:
             return int(val)
 
         return str(val)

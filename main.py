@@ -59,12 +59,12 @@ class Shop(BaseModel):
     juices = fields.ForeignKey(Juice)
     pizzas = fields.ForeignKey(Pizza)
 
-db.migrate(Pizza)
-db.migrate(Juice)
-db.migrate(Shop)
+# db.migrate(Pizza)
+# db.migrate(Juice)
+# db.migrate(Shop)
 
-k = Klass.objects.where(name__eq='A', fetch_relations=True)
-s = Student.objects.where(id__eq=1)
+k = Klass.objects.where(name='A', fetch_relations=True)
+s = Student.objects.where(id=1)
 print(s[0].name)
-klass_student_has_enrolled = Klass.objects.where(student__eq=s[0])
+klass_student_has_enrolled = Klass.objects.where(student=s[0])
 print(klass_student_has_enrolled)
