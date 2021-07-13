@@ -43,14 +43,15 @@ class Shop(BaseModel):
     juices = fields.ForeignKey(Juice)
     pizzas = fields.ForeignKey(Pizza)
 
-k = Klass.objects.where(name='A', fetch_relations=True)
-s = Student.objects.where(id__gte=1)
-j = Juice.objects.insert(name="test")
-pizza = Pizza.objects.insert(name="testp")
-shop =  Shop.objects.insert(juices =j ,pizzas=pizza)
-klass_student_has_enrolled = Klass.objects.where(student=s[0])
-print(klass_student_has_enrolled)
-sj   = Shop.objects.get_one(id=1,fetch_relations=True)
+# db.migrate(Juice)
+# db.migrate(Pizza)
+# db.migrate(Shop)
+
+# j = Juice.objects.insert(name="test")
+# pizza = Pizza.objects.insert(name="testp")
+# shop =  Shop.objects.insert(juices =j ,pizzas=pizza)
+sj   = Shop.objects.get_one(id=2,fetch_relations=True)
 print(sj.juices)
 for j in sj.juices:
     print(j)
+# Juice.objects.delete(id__eq=1)

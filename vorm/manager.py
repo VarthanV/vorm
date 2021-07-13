@@ -10,6 +10,7 @@ class _Constants:
     INSERT_SQL = "INSERT INTO {name} ({fields}) VALUES ({placeholders});"
     SELECT_WHERE_SQL = "SELECT {fields} FROM {name} WHERE {query};"
     SELECT_ALL_SQL = "SELECT {fields} FROM {name};"
+    DELETE_ALL_SQL = "DELETE FROM {name} where {conditions}"
     SEPERATOR = "__"
     FIELDS_TO_EXCLUDE_IN_INSPECTION = ["table_name", "manager_class"]
     KNOWN_CLASSES = (int, float, str, tuple)
@@ -47,6 +48,13 @@ class ConnectionManager:
     @property
     def _get_fields(self):
         cursor = self._get_cursor()
+        cursor.execute(
+            """
+            SELECT column_name, data_type FROM information_schema.columns WHERE table_name=%s
+            """,
+            (self.table_name, )
+        )
+        return [row['column_name'] for row in cursor.fetchall()]
 
     @classmethod
     def create_connection(cls, db_settings: dict):
@@ -186,8 +194,8 @@ class ConnectionManager:
                 _fields_list.append(
                     ("FOREIGN KEY({column})".format(
                         column=_col_name),
-                        "REFERENCES {table_name}({referred_column})".
-                        format(table_name=field.table.table_name, referred_column='id')))
+                        "REFERENCES {table_name}({referred_column}) ON DELETE {on_delete}".
+                        format(table_name=field.table.table_name, referred_column='id', on_delete=field.on_delete)))
                 continue
 
             if isinstance(field, fields.CharField):
@@ -218,6 +226,17 @@ class ConnectionManager:
             name=table.table_name, fields=", ".join(_fields_list)
         )
 
+    def _return_conditions_as_sql_string(self, conditions: List) -> str:
+
+        return " AND ".join(
+            [
+                "`{}` {} {}".format(
+                    i.column, i.operator, self._get_parsed_value(i.value)
+                )
+                for i in conditions
+            ]
+        )
+
     def _get_parsed_value(self, val):
         if type(val) == str:
             return "'{}'".format(val)
@@ -243,14 +262,7 @@ class ConnectionManager:
         _sql_query = _Constants.SELECT_WHERE_SQL.format(
             name=self.table_name,
             fields="*",
-            query=" AND ".join(
-                [
-                    "`{}` {} {}".format(
-                        i.column, i.operator, self._get_parsed_value(i.value)
-                    )
-                    for i in condition_list
-                ]
-            ),
+            query=self._return_conditions_as_sql_string(condition_list)
         )
         self.db_connection.reconnect()
         cur2 = self.db_connection.cursor(buffered=True, dictionary=True)
@@ -300,6 +312,13 @@ class ConnectionManager:
             last_inserted_id = cur.fetchone()
             kwargs['id'] = last_inserted_id['id']
         return self._dict_to_model_class(kwargs, self.model_class)
+
+    def delete(self, **kwargs):
+        condition_list = self._evaluate_user_conditions(kwargs)
+        _sql_query = _Constants.DELETE_ALL_SQL.format(
+            name=self.table_name, conditions=self._return_conditions_as_sql_string(condition_list))
+        cur = self._get_cursor()
+        cur.execute(_sql_query)
 
     def raw(self, query: str):
         return self._execute_query(query)

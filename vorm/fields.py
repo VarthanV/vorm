@@ -7,7 +7,7 @@ __all__ = ["CharField", "IntegerField", "FloatField"]
 class NotProvided:
     pass
 
-
+CASCADE = 'CASCADE'
 class BaseField:
     field_sql_name = ""
 
@@ -59,6 +59,7 @@ class BooleanField(BaseField) :
     field_sql_name = "TINYINT"
     
 class ForeignKey :
-    def __init__(self,table,nullable=True):
+    def __init__(self,table,nullable=True,on_delete=CASCADE):
         self.table = table
         self.nullable = nullable
+        self.on_delete= on_delete
