@@ -46,7 +46,10 @@ class ConnectionManager:
         return self.model_class.table_name
 
     @property
-    def _get_fields(self):
+    def _get_fields(self) -> List[str]:
+        """
+        Returns all the name of co
+        """
         cursor = self._get_cursor()
         cursor.execute(
             """
@@ -180,6 +183,19 @@ class ConnectionManager:
 
     @classmethod
     def _get_create_sql(cls, table) -> str:
+        """
+        The function which converts the user defined model class 
+        in to a tuple form  (column_name,SQL Attributes)  ,Each
+        field is evaluated and its corresponding SQL representations
+        are added ,After evaluation a sql query is generated for the same.
+
+        Parameters:
+            table(BaseModel) - An instance of BaseModel
+
+        Returns:
+            query(str) - The sql query    
+        """
+
         _fields_list = [
             ('id', 'INT NOT NULL AUTO_INCREMENT PRIMARY KEY')
         ]
@@ -188,6 +204,7 @@ class ConnectionManager:
             attr_string = ""
             if name.startswith("_") or name in _Constants.FIELDS_TO_EXCLUDE_IN_INSPECTION:
                 continue
+
             if isinstance(field, fields.ForeignKey):
                 _col_name = "{}_id".format(name)
                 _fields_list.append((_col_name, 'INT'))
@@ -227,6 +244,9 @@ class ConnectionManager:
         )
 
     def _return_conditions_as_sql_string(self, conditions: List) -> str:
+        """
+        Returns the user 
+        """
 
         return " AND ".join(
             [
