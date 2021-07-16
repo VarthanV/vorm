@@ -10,7 +10,8 @@ class _Constants:
     INSERT_SQL = "INSERT INTO {name} ({fields}) VALUES ({placeholders});"
     SELECT_WHERE_SQL = "SELECT {fields} FROM {name} WHERE {query};"
     SELECT_ALL_SQL = "SELECT {fields} FROM {name};"
-    DELETE_ALL_SQL = "DELETE FROM {name} where {conditions}"
+    DELETE_ALL_SQL = "DELETE FROM {name} WHERE {conditions}"
+    UPDATE_SQL = "UPDATE {name} SET {new_data} WHERE {conditions}"
     SEPERATOR = "__"
     FIELDS_TO_EXCLUDE_IN_INSPECTION = ["table_name", "manager_class"]
     KNOWN_CLASSES = (int, float, str, tuple)
@@ -135,6 +136,16 @@ class ConnectionManager:
 
     @classmethod
     def _evaluate_user_conditions(cls, conditions: dict) -> List:
+        """
+        Evaluvates the user conditions and  returns it as 
+        list of tuples
+        Eg : {'price__gt':200 , 'os':'android'} - > [('price','>',200),('os','=','android')]
+
+        Params:
+            Conditions dict
+        Returns:
+            List[tuple]   
+        """
         conditions_list = []
         condition = None
         for k, v in conditions.items():
@@ -179,6 +190,7 @@ class ConnectionManager:
             raise ValueError("Expected to have a table_name")
 
         _create_sql = cls._get_create_sql(table)
+        print(_create_sql)
         cls._execute_query(query=_create_sql)
 
     @classmethod
@@ -245,7 +257,13 @@ class ConnectionManager:
 
     def _return_conditions_as_sql_string(self, conditions: List) -> str:
         """
-        Returns the user 
+        Returns the users condtion as string joined with AND clause
+
+        Params: 
+            conditions(List) : The list of user conditions as tuple
+
+        Returns:
+            sql_string(str)  :  The sql equivalent string 
         """
 
         return " AND ".join(
@@ -266,9 +284,24 @@ class ConnectionManager:
         return str(val)
 
     def _dict_to_model_class(self, d, table):
+        """
+        Converts the given dict to the specified model_class
+
+        Params:
+            d(dict) : The dict representation of the class
+            table(BaseModel | Any) : The class which we want the values to be spread
+
+        Returns :
+            table : The table with the values of the dict spreaded     
+        """
+
         return table(**d)
 
     def _return_foreign_keys_from_a_table(self, model_class, query_dict):
+        """
+        Finds foreign_key fields from a table ,queries it
+        and attaches to the found attribute in the model class.
+        """
         for name, field in inspect.getmembers(model_class):
             if isinstance(field, fields.ForeignKey):
                 column_name = '{}_id'.format(name)
@@ -278,6 +311,22 @@ class ConnectionManager:
         return model_class
 
     def where(self, fetch_relations=False, limit=None, **kwargs) -> List:
+        """
+        A wrapper for  the SQL's  WHERE clause , You mention the constraints for the
+        attributes , It will convert them in equivalent SQL query and returns a instance 
+        of the model class
+
+        Eg : first_employee = Employee.objects.get(id=1)
+
+        Params:
+            kwargs :The constraints that you want to query the DB with
+            fetch_relations(bool) : Defaults to false,  If you want to fetch the foreign keys
+            you can set it to True
+            limit(int): The limit of the query set
+
+        Returns :
+            The model class    
+        """
         condition_list = self._evaluate_user_conditions(kwargs)
         _sql_query = _Constants.SELECT_WHERE_SQL.format(
             name=self.table_name,
@@ -302,12 +351,24 @@ class ConnectionManager:
         return result
 
     def get_one(self, fetch_relations=False, **kwargs):
+        """
+        Calls the where method and returns the first result from 
+        the query_set
+        """
+
         result = self.where(limit=1, fetch_relations=fetch_relations, **kwargs)
         if not len(result):
             return None
         return result[0]
 
     def insert(self, **kwargs):
+        """
+        Inserts a record into the database by converting the model class into its
+        equivalent SQL query
+
+        Eg  : student = Student.objects.insert(name='Vishnu Varthan' ,class='12C')
+        """
+
         fields = list()
         values = list()
         for k, v in kwargs.items():
@@ -326,22 +387,55 @@ class ConnectionManager:
             placeholders=' , '.join([self._get_parsed_value(i) for i in values]))
         err = self._get_cursor().execute(_sql_query)
 
-        if not err:
+        if not err and not kwargs.get('id'):
             cur = self._get_cursor()
             cur.execute(_Constants.GET_LAST_INSERTED_ID_SQL)
             last_inserted_id = cur.fetchone()
             kwargs['id'] = last_inserted_id['id']
+
         return self._dict_to_model_class(kwargs, self.model_class)
 
+    def update(self, new_data: dict, **kwargs):
+        """
+        Updates the specified table in the database by evaluvating the conditions 
+        we specified
+        p = Pizza.objects.update(new_data={'name':'Paneer pizza'},id=1)
+        SQL Query : UPDATE pizza SET `name` = 'Paneer pizza' WHERE `id` = 1
+
+        Params:
+            new_data(dict) : A dict which contains the new values , column_name
+            being the key and the  new value for the column being the value for
+            the key
+            conditions(kwargs) : Conditions for the  row to be updated
+
+        Returns :
+            model_class    
+        """
+        new_data_list = ', '.join(
+            [f'`{field_name}` = {self._get_parsed_value(value)}' for field_name, value in new_data.items()])
+        condition_list = self._evaluate_user_conditions(kwargs)
+        condition_string = self._return_conditions_as_sql_string(
+            condition_list)
+        _sql_query = _Constants.UPDATE_SQL.format(
+            name=self.table_name, new_data=new_data_list, conditions=condition_string)
+        print(_sql_query)
+        cur = self._get_cursor()
+        cur.execute(_sql_query)
+
+        for k, v in new_data.items():
+            kwargs[k] = v
+
+        return self.get_one(**kwargs)
+
     def delete(self, **kwargs):
+        """
+        Delete a record from database
+        """
         condition_list = self._evaluate_user_conditions(kwargs)
         _sql_query = _Constants.DELETE_ALL_SQL.format(
             name=self.table_name, conditions=self._return_conditions_as_sql_string(condition_list))
         cur = self._get_cursor()
         cur.execute(_sql_query)
-
-    def raw(self, query: str):
-        return self._execute_query(query)
 
 
 class MetaModel(type):

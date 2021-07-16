@@ -1,4 +1,4 @@
-from os import name
+from os import name, path
 from vorm.manager import ConnectionManager as db
 from vorm.base import *
 from vorm import fields
@@ -15,12 +15,12 @@ db_settings = {
 db.create_connection(db_settings)
 
 
-class Student(BaseModel):
-    table_name = "students"
-    name = fields.CharField(max_length=250, nullable=False, default="Johny")
-    standard = fields.CharField(max_length=100, nullable=True)
-    salary = fields.IntegerField()
-    created_at = fields.DateField()
+class Student(BaseModel) :
+    table_name="studentss"
+    name = fields.CharField(max_length=300)
+    clas = fields.CharField(max_length=200)
+    age = fields.IntegerField()
+    
 
 
 class Klass(BaseModel):
@@ -47,11 +47,15 @@ class Shop(BaseModel):
 # db.migrate(Pizza)
 # db.migrate(Shop)
 
+db.migrate(Student)
 # j = Juice.objects.insert(name="test")
 # pizza = Pizza.objects.insert(name="testp")
 # shop =  Shop.objects.insert(juices =j ,pizzas=pizza)
-sj   = Shop.objects.get_one(id=2,fetch_relations=True)
-print(sj.juices)
-for j in sj.juices:
-    print(j)
-# Juice.objects.delete(id__eq=1)
+# sj   = Shop.objects.get_one(id=2,fetch_relations=True)
+# print(sj.juices)
+# for j in sj.juices:
+#     print(j)
+# # Juice.objects.delete(id__eq=1)
+
+s  = Pizza.objects.update(new_data={'name':'Paneer pizza'},id=1)
+print(s)
