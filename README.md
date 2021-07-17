@@ -18,7 +18,7 @@
     <br />
     <a href="https://github.com/VarthanV/vorm">View Demo</a>
     ·
-    <a href="https://github.com/VarthanV/vorm/issues">Report Bug</a>
+    <a href="https://github.com/VarthanV/vorm/issues">vormrt Bug</a>
     ·
     <a href="https://github.com/VarthanV/vorm/issues">Request Feature</a>
   </p>
@@ -118,7 +118,7 @@ Project Link: [https://github.com/VarthanV/vorm](https://github.com/VarthanV/vor
 
 ## Acknowledgements
 
-These repositories gave me a base idea of how a orm must be
+These vormsitories gave me a base idea of how a orm must be
 
 - [Django ORM](https://github.com/django/django)
 - [yann-orm](https://github.com/yannickkiki/yann-orm)
@@ -134,15 +134,15 @@ These repositories gave me a base idea of how a orm must be
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 
-[contributors-shield]: https://img.shields.io/github/contributors/VarthanV/repo.svg?style=for-the-badge
-[contributors-url]: https://github.com/VarthanV/repo/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/VarthanV/repo.svg?style=for-the-badge
-[forks-url]: https://github.com/VarthanV/repo/network/members
-[stars-shield]: https://img.shields.io/github/stars/VarthanV/repo.svg?style=for-the-badge
-[stars-url]: https://github.com/VarthanV/repo/stargazers
-[issues-shield]: https://img.shields.io/github/issues/VarthanV/repo.svg?style=for-the-badge
-[issues-url]: https://github.com/VarthanV/repo/issues
-[license-shield]: https://img.shields.io/github/license/VarthanV/repo.svg?style=for-the-badge
-[license-url]: https://github.com/VarthanV/repo/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/VarthanV/vorm.svg?style=for-the-badge
+[contributors-url]: https://github.com/VarthanV/vorm/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/VarthanV/vorm.svg?style=for-the-badge
+[forks-url]: https://github.com/VarthanV/vorm/network/members
+[stars-shield]: https://img.shields.io/github/stars/VarthanV/vorm.svg?style=for-the-badge
+[stars-url]: https://github.com/VarthanV/vorm/stargazers
+[issues-shield]: https://img.shields.io/github/issues/VarthanV/vorm.svg?style=for-the-badge
+[issues-url]: https://github.com/VarthanV/vorm/issues
+[license-shield]: https://img.shields.io/github/license/VarthanV/vorm.svg?style=for-the-badge
+[license-url]: https://github.com/VarthanV/vorm/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://www.linkedin.com/in/vishnu-varthan-765345175/
