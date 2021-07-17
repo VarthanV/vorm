@@ -3,20 +3,23 @@ from typing import List
 import mysql.connector as connector
 from . import fields
 from .types import Condition
+import psycopg2
+import psycopg2.extras
 
 
 class _Constants:
     CREATE_TABLE_SQL = "CREATE TABLE {name} ({fields});"
     INSERT_SQL = "INSERT INTO {name} ({fields}) VALUES ({placeholders});"
-    SELECT_WHERE_SQL = "SELECT {fields} FROM {name} WHERE {query};"
+    SELECT_WHERE_SQL = "SELECT {fields} FROM {name} WHERE {query}"
     SELECT_ALL_SQL = "SELECT {fields} FROM {name};"
-    DELETE_ALL_SQL = "DELETE FROM {name} WHERE {conditions}"
-    UPDATE_SQL = "UPDATE {name} SET {new_data} WHERE {conditions}"
+    DELETE_ALL_SQL = "DELETE FROM {name} WHERE {conditions};"
+    UPDATE_SQL = "UPDATE {name} SET {new_data} WHERE {conditions};"
     SEPERATOR = "__"
     FIELDS_TO_EXCLUDE_IN_INSPECTION = ["table_name", "manager_class"]
     KNOWN_CLASSES = (int, float, str, tuple)
     OP_EQUAL = 'eq'
-    GET_LAST_INSERTED_ID_SQL = "SELECT LAST_INSERT_ID() as id;"
+    GET_LAST_INSERTED_ID_MYSQL = "SELECT LAST_INSERT_ID() as id;"
+    GET_LAST_INSERTED_ID_POSTGRESQL = "SELECT currval(pg_get_serial_sequence('{table_name}','id')) as id;"
 
 
 class ConnectionManager:
@@ -31,6 +34,8 @@ class ConnectionManager:
         "in": "IN",
         "like": "LIKE",
     }
+    MYSQL = 'mysql'
+    POSTGRESQL = 'postgresql'
 
     def __init__(self, model_class) -> None:
         self.model_class = model_class
@@ -78,6 +83,9 @@ class ConnectionManager:
         if cls.db_engine == "mysql":
             cls._connect_to_mysql(db_settings)
 
+        if cls.db_engine == "postgresql":
+            cls._connect_to_postgresql(db_settings)
+
     @classmethod
     def _connect_to_mysql(cls, db_settings: dict):
         """
@@ -101,6 +109,16 @@ class ConnectionManager:
             raise Exception(e)
 
     @classmethod
+    def _connect_to_postgresql(cls, db_settings: dict):
+        try:
+            connection = psycopg2.connect(**db_settings)
+            connection.autocommit = True
+            cls.db_connection = connection
+
+        except Exception as e:
+            print(e)
+
+    @classmethod
     def _get_cursor(cls):
         """
         Returns the cursor of the current db_connection
@@ -111,10 +129,12 @@ class ConnectionManager:
         Returns:
             cursor(Any) : The cursor object  
         """
+        if cls.db_engine == cls.MYSQL:
+            if(not cls.db_connection.is_connected()):
+                cls.db_connection.reconnect(attempts=2)
+            return cls.db_connection.cursor(buffered=True, dictionary=True)
 
-        if(not cls.db_connection.is_connected()):
-            cls.db_connection.reconnect(attempts=2)
-        return cls.db_connection.cursor(buffered=True, dictionary=True)
+        return cls.db_connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     @classmethod
     def _execute_query(cls, query, variables=None):
@@ -190,8 +210,24 @@ class ConnectionManager:
             raise ValueError("Expected to have a table_name")
 
         _create_sql = cls._get_create_sql(table)
-        print(_create_sql)
         cls._execute_query(query=_create_sql)
+
+    @classmethod
+    def _get_corresponding_auto_increment_sql_type(cls) -> str:
+        if cls.db_engine == cls.MYSQL:
+            return 'INT', 'AUTO_INCREMENT'
+        return 'SERIAL', ''
+
+    @classmethod
+    def _escape_column_names(cls, val):
+        if cls.db_engine == cls.MYSQL:
+            return f'`{val}`'
+        return f'"{val}"'
+
+    def _get_last_inserted_sql(self):
+        if self.db_engine == self.MYSQL:
+            return _Constants.GET_LAST_INSERTED_ID_MYSQL
+        return _Constants.GET_LAST_INSERTED_ID_POSTGRESQL.format(table_name=self.table_name)
 
     @classmethod
     def _get_create_sql(cls, table) -> str:
@@ -208,8 +244,10 @@ class ConnectionManager:
             query(str) - The sql query    
         """
 
+        _type, field_name = cls._get_corresponding_auto_increment_sql_type()
         _fields_list = [
-            ('id', 'INT NOT NULL AUTO_INCREMENT PRIMARY KEY')
+            ('id', '{type} NOT NULL {field} PRIMARY KEY'.format(
+                type=_type, field=field_name))
         ]
 
         for name, field in inspect.getmembers(table):
@@ -268,8 +306,9 @@ class ConnectionManager:
 
         return " AND ".join(
             [
-                "`{}` {} {}".format(
-                    i.column, i.operator, self._get_parsed_value(i.value)
+                "{} {} {}".format(
+                    self._escape_column_names(
+                        i.column), i.operator, self._get_parsed_value(i.value)
                 )
                 for i in conditions
             ]
@@ -333,10 +372,11 @@ class ConnectionManager:
             fields="*",
             query=self._return_conditions_as_sql_string(condition_list)
         )
-        self.db_connection.reconnect()
-        cur2 = self.db_connection.cursor(buffered=True, dictionary=True)
+        cur2 = self._get_cursor()
         if limit:
-            _sql_query += ' LIMIT {limit} '.format(limit=limit)
+            _sql_query += ' LIMIT {limit} ;'.format(limit=limit)
+        else:
+            _sql_query += ' ;'
 
         cur2.execute(_sql_query)
         rows = cur2.fetchall()
@@ -381,15 +421,15 @@ class ConnectionManager:
             values.append(value)
 
         _sql_query = _Constants.INSERT_SQL.format(
-            name='`{}`'.format(self.table_name),
+            name=self._escape_column_names(self.table_name),
             fields=' , '.join(
-                ['`{}`'.format(i) for i in fields]),
+                [self._escape_column_names(i) .format(i) for i in fields]),
             placeholders=' , '.join([self._get_parsed_value(i) for i in values]))
         err = self._get_cursor().execute(_sql_query)
 
         if not err and not kwargs.get('id'):
             cur = self._get_cursor()
-            cur.execute(_Constants.GET_LAST_INSERTED_ID_SQL)
+            cur.execute(self._get_last_inserted_sql())
             last_inserted_id = cur.fetchone()
             kwargs['id'] = last_inserted_id['id']
 
@@ -412,13 +452,12 @@ class ConnectionManager:
             model_class    
         """
         new_data_list = ', '.join(
-            [f'`{field_name}` = {self._get_parsed_value(value)}' for field_name, value in new_data.items()])
+            [f'{self._escape_column_names(field_name)} = {self._get_parsed_value(value)}' for field_name, value in new_data.items()])
         condition_list = self._evaluate_user_conditions(kwargs)
         condition_string = self._return_conditions_as_sql_string(
             condition_list)
         _sql_query = _Constants.UPDATE_SQL.format(
             name=self.table_name, new_data=new_data_list, conditions=condition_string)
-        print(_sql_query)
         cur = self._get_cursor()
         cur.execute(_sql_query)
 

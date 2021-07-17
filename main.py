@@ -3,7 +3,7 @@ from vorm.manager import ConnectionManager as db
 from vorm.base import *
 from vorm import fields
 
-db_settings = {
+msql_db_settings = {
     "driver": "mysql",
     "user": "root",
     "password": "root1234",
@@ -12,7 +12,17 @@ db_settings = {
     "database": "pizza_shop",
 }
 
-db.create_connection(db_settings)
+
+pg_db_settings = {
+    "driver": "postgresql",
+    "user": "kbxejsgu",
+    "password": "i4WdBPeKNeDAfRpipV-883wYZkMOUYvf",
+    "host": "batyr.db.elephantsql.com",
+    "port": 5432,
+    "database": "kbxejsgu",
+}
+
+db.create_connection(pg_db_settings)
 
 
 class Student(BaseModel) :
@@ -47,7 +57,7 @@ class Shop(BaseModel):
 # db.migrate(Pizza)
 # db.migrate(Shop)
 
-db.migrate(Student)
+#db.migrate(Student)
 # j = Juice.objects.insert(name="test")
 # pizza = Pizza.objects.insert(name="testp")
 # shop =  Shop.objects.insert(juices =j ,pizzas=pizza)
@@ -57,5 +67,8 @@ db.migrate(Student)
 #     print(j)
 # # Juice.objects.delete(id__eq=1)
 
+d = Student.objects.insert(name='Vishnu',clas='10C',age=15)
+m = Student.objects.where(id=1)
+print(m)
 s  = Pizza.objects.update(new_data={'name':'Paneer pizza'},id=1)
 print(s)
