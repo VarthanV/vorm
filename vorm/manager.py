@@ -1,4 +1,5 @@
 import inspect
+import re
 from typing import List
 import mysql.connector as connector
 from . import fields
@@ -85,6 +86,8 @@ class ConnectionManager:
 
         if cls.db_engine == "postgresql":
             cls._connect_to_postgresql(db_settings)
+
+        return cls
 
     @classmethod
     def _connect_to_mysql(cls, db_settings: dict):
@@ -246,7 +249,7 @@ class ConnectionManager:
 
         _type, field_name = cls._get_corresponding_auto_increment_sql_type()
         _fields_list = [
-            ('id', '{type} NOT NULL {field} PRIMARY KEY'.format(
+            ('`id`', '{type} NOT NULL {field} PRIMARY KEY'.format(
                 type=_type, field=field_name))
         ]
 
@@ -287,7 +290,8 @@ class ConnectionManager:
                     attr_string += "DEFAULT '{}'".format(field.default)
                 elif isinstance(field, fields.IntegerField):
                     attr_string += "DEFAULT {}".format(field.default)
-            _fields_list.append((name, attr_string))
+            _fields_list.append((cls._escape_column_names(name), attr_string))
+        print(_fields_list)
         _fields_list = [" ".join(x) for x in _fields_list]
         return _Constants.CREATE_TABLE_SQL.format(
             name=table.table_name, fields=", ".join(_fields_list)
@@ -303,18 +307,17 @@ class ConnectionManager:
         Returns:
             sql_string(str)  :  The sql equivalent string 
         """
-
         return " AND ".join(
             [
                 "{} {} {}".format(
                     self._escape_column_names(
-                        i.column), i.operator, self._get_parsed_value(i.value)
+                        i.column), i.operator, self._get_escaped_value(i.value)
                 )
                 for i in conditions
             ]
         )
 
-    def _get_parsed_value(self, val):
+    def _get_escaped_value(self, val):
         if type(val) == str:
             return "'{}'".format(val)
         elif type(val) == bool:
@@ -424,7 +427,7 @@ class ConnectionManager:
             name=self._escape_column_names(self.table_name),
             fields=' , '.join(
                 [self._escape_column_names(i) .format(i) for i in fields]),
-            placeholders=' , '.join([self._get_parsed_value(i) for i in values]))
+            placeholders=' , '.join([self._get_escaped_value(i) for i in values]))
         err = self._get_cursor().execute(_sql_query)
 
         if not err and not kwargs.get('id'):
@@ -452,7 +455,7 @@ class ConnectionManager:
             model_class    
         """
         new_data_list = ', '.join(
-            [f'{self._escape_column_names(field_name)} = {self._get_parsed_value(value)}' for field_name, value in new_data.items()])
+            [f'{self._escape_column_names(field_name)} = {self._get_escaped_value(value)}' for field_name, value in new_data.items()])
         condition_list = self._evaluate_user_conditions(kwargs)
         condition_string = self._return_conditions_as_sql_string(
             condition_list)

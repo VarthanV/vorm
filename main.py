@@ -67,8 +67,8 @@ class Shop(BaseModel):
 #     print(j)
 # # Juice.objects.delete(id__eq=1)
 
-d = Student.objects.insert(name='Vishnu',clas='10C',age=15)
-m = Student.objects.where(id=1)
+#d = Student.objects.insert(name='Vishnu',clas='10C',age=15)
+m = Student.objects.where(name='Vishnu',id__gt=8)
 print(m)
 s  = Pizza.objects.update(new_data={'name':'Paneer pizza'},id=1)
 print(s)
