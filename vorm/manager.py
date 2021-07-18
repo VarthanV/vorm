@@ -12,7 +12,7 @@ class _Constants:
     CREATE_TABLE_SQL = "CREATE TABLE {name} ({fields});"
     INSERT_SQL = "INSERT INTO {name} ({fields}) VALUES ({placeholders});"
     SELECT_WHERE_SQL = "SELECT {fields} FROM {name} WHERE {query}"
-    SELECT_ALL_SQL = "SELECT {fields} FROM {name};"
+    SELECT_ALL_SQL = "SELECT {fields} FROM {name}"
     DELETE_ALL_SQL = "DELETE FROM {name} WHERE {conditions};"
     UPDATE_SQL = "UPDATE {name} SET {new_data} WHERE {conditions};"
     SEPERATOR = "__"
@@ -369,13 +369,19 @@ class ConnectionManager:
         Returns :
             The model class    
         """
-        condition_list = self._evaluate_user_conditions(kwargs)
-        _sql_query = _Constants.SELECT_WHERE_SQL.format(
-            name=self.table_name,
-            fields="*",
-            query=self._return_conditions_as_sql_string(condition_list)
-        )
         cur2 = self._get_cursor()
+        print('kwargs is', kwargs)
+        if bool(kwargs):
+            condition_list = self._evaluate_user_conditions(kwargs)
+            _sql_query = _Constants.SELECT_WHERE_SQL.format(
+                name=self.table_name,
+                fields="*",
+                query=self._return_conditions_as_sql_string(condition_list)
+            )
+        else:
+            _sql_query = _Constants.SELECT_ALL_SQL.format(
+                fields="*", name=self.table_name)
+
         if limit:
             _sql_query += ' LIMIT {limit} ;'.format(limit=limit)
         else:
@@ -403,6 +409,9 @@ class ConnectionManager:
         if not len(result):
             return None
         return result[0]
+
+    def all(self, fetch_relations=False):
+        return self.where(fetch_relations=fetch_relations)
 
     def insert(self, **kwargs):
         """

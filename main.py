@@ -72,3 +72,7 @@ m = Student.objects.where(name='Vishnu',id__gt=8)
 print(m)
 s  = Pizza.objects.update(new_data={'name':'Paneer pizza'},id=1)
 print(s)
+students = Student.objects.all()
+print(students)
+
+db.migrate([Student,Pizza])

@@ -12,7 +12,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='vorm',
-    version='0.0.1',
+    version='0.0.2',
     package=setuptools.find_packages(),
     include_packages_data=True,
     long_description_content_type='text/markdown',

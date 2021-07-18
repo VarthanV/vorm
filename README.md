@@ -16,9 +16,9 @@
     <!-- <a href="https://github.com/Varthan/vorm"><strong>Explore the docs »</strong></a> -->
     <br />
     <br />
-    <a href="https://github.com/VarthanV/vorm">View Demo</a>
-    ·
-    <a href="https://github.com/VarthanV/vorm/issues">vormrt Bug</a>
+    <!-- <a href="https://github.com/VarthanV/vorm">View Demo</a>
+    · -->
+    <a href="https://github.com/VarthanV/vorm/issues">Bug</a>
     ·
     <a href="https://github.com/VarthanV/vorm/issues">Request Feature</a>
   </p>
@@ -54,7 +54,9 @@
 
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+vorm is a toy ORM written in Python , I started it as a fun hobby project to know how ORM's work internally and to better understand it and use it efficiently in my day to day work /projects .Currently vorm supports MYSQL and PostgreSQL DB engines . Feel free to add support to other DB's as well.
+
+Thanks for stopping here (:
 
 ### Built With
 
@@ -76,13 +78,132 @@ pip install vorm
 
 <!-- USAGE EXAMPLES -->
 
-## Usage
+## Usage and Examples
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+vorm has similiar syntax to other popular ORM's like Djang ORM and SQLalchemy , If you have familiarity with these libraries already it will not take much time for you to adopt to its syntax
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+## Connecting to database
+
+We need to create a connection to a database , Currently vorm supports **PostgreSQL** and **MYSQL**
+
+```python
+from vorm.manager import ConnectionManager as db
+
+db_settings = {
+    "driver": "postgresql",
+    "user": "root",
+    "password": "astrongpassword",
+    "host": "localhost",
+    "port": 5432,
+    "database": "students",
+}
+
+db.create_connection(db_settings)
+
+```
+
+## Creating a model class
+
+- Each model class in vorm inherits the **Base Model** class.
+
+- Each attribute of the model represents a field in your database.
+
+```python
+from vorm import base
+from vorm import fields
+
+class Person(base.BaseModel):
+
+    table_name = 'person'
+
+    first_name = fields.CharField(max_length=30)
+    last_name = fields.CharField(max_length=30)
+    age = fields.IntegerField(default=15)
+
+```
+
+`table_name` is a required attribute, Your table will be named in the database.
+
+The above model class would create a table like this
+
+```postgresql
+CREATE TABLE person (
+    "id" SERIAL NOT NULL PRIMARY KEY,
+    "first_name" VARCHAR(30) NOT NULL,
+    "last_name" VARCHAR(30) NOT NULL ,
+    "age"  int DEFAULT 15 NOT NULL,
+);
+```
+
+## Migration
+
+After you define the model class ,you need to create your defined class as a table in the connected database.
+
+```python
+db.migrate(Person)
+```
+
+When this piece of code runs , The `person` table will be created in the connected database.
 
 <!-- ROADMAP -->
+
+## Inserting into a table
+
+```python
+person_1 = Person.objects.insert(first_name="Walter",last_name="White",age=50)
+
+print(f"The persons name is {person.first_name} {person.last_name}")
+
+"Walter White"
+```
+
+## Querying from a table
+
+```python
+# Get all the persons whose age is greater than 30
+
+persons = Person.objects.where(age__gt =30)
+
+print(len(persons))
+```
+
+The where method always returns a list of `model_class` , If no results are found it returns an empty array
+
+## Updating a row in the table
+
+```python
+# Updates the row with the id 1 and returns the updated value
+
+updated_person = Person.objects.update(new_data={"first_name":"Vishnu"},id=1)
+
+print(updated_person.first_name)
+
+"Vishnu"
+```
+
+### Deleting a row from the table
+
+```python
+
+# Deletes the person with the id 1
+
+Person.objects.delete(id=1)
+```
+
+## Foreign key
+
+```python
+class Membership(base.BaseModel) :
+    name = fields.CharField(max_length=100)
+    person = fields.ForeignKey(Person)
+
+person  = Person.objects.where(id=2)
+
+membership = Person.objects.insert(name="Test membership" , person=person)
+
+print(membership.person)  # Returns a list of the person object
+
+```
 
 ## Roadmap
 
@@ -118,13 +239,13 @@ Project Link: [https://github.com/VarthanV/vorm](https://github.com/VarthanV/vor
 
 ## Acknowledgements
 
-These vormsitories gave me a base idea of how a orm must be
+These repositories gave me a base idea of how a orm must be
 
 - [Django ORM](https://github.com/django/django)
 - [yann-orm](https://github.com/yannickkiki/yann-orm)
 - [orm](https://github.com/gtback/orm)
 
-## What's next ?
+## What's next 🚀 ?
 
 - Adding support for more DB engines.
 - Admin panel (Inspired by Django).
