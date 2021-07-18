@@ -1,12 +1,10 @@
-from os import PRIO_PGRP
-from pprint import pprint
-import vorm
-from vorm.manager import ConnectionManager
+from os import name, path
+from vorm.manager import ConnectionManager as db
 from vorm.base import *
 from vorm import fields
 
-db_settings = {
-    "ENGINE": "mysql",
+msql_db_settings = {
+    "driver": "mysql",
     "user": "root",
     "password": "root1234",
     "host": "localhost",
@@ -14,15 +12,25 @@ db_settings = {
     "database": "pizza_shop",
 }
 
-ConnectionManager.create_connection(db_settings)
+
+pg_db_settings = {
+    "driver": "postgresql",
+    "user": "kbxejsgu",
+    "password": "i4WdBPeKNeDAfRpipV-883wYZkMOUYvf",
+    "host": "batyr.db.elephantsql.com",
+    "port": 5432,
+    "database": "kbxejsgu",
+}
+
+db.create_connection(pg_db_settings)
 
 
-class Student(BaseModel):
-    table_name = "students"
-    name = fields.CharField(max_length=250, nullable=False, default="Johny")
-    standard = fields.CharField(max_length=100, nullable=True)
-    salary = fields.IntegerField()
-    created_at = fields.DateField()
+class Student(BaseModel) :
+    table_name="studentss"
+    name = fields.CharField(max_length=300)
+    clas = fields.CharField(max_length=200)
+    age = fields.IntegerField()
+    
 
 
 class Klass(BaseModel):
@@ -31,21 +39,40 @@ class Klass(BaseModel):
     student = fields.ForeignKey(Student)
 
 
-# ConnectionManager.migrate(Student)
-# ConnectionManager.migrate(Student)
-# ConnectionManager.migrate(Klass)
-# ConnectionManager.migrate(Employee)
-# students = Student.objects.where(name__eq='vishnu',salary__gte=2000)
-# for i in students :
-#     print(i.name)
+class Pizza(BaseModel):
+    table_name="pizza"
+    name = fields.CharField(max_length=200)
 
-# s = Student.objects.get_one(name__eq='vishnu',salary__eq=50000)
-# print(s.name)
+class Juice(BaseModel):
+    table_name="juice"
+    name = fields.CharField(max_length=300)
 
-# k = Klass.objects.get_one(id__eq=1)
-# print(k)
+class Shop(BaseModel):
+    table_name="shop"
+    name = fields.CharField(max_length=200)
+    juices = fields.ForeignKey(Juice)
+    pizzas = fields.ForeignKey(Pizza)
 
-k = Klass.objects.where(name__eq='A', fetch_relations=True)
-s = Student.objects.get_one(id__eq=1)
+# db.migrate(Juice)
+# db.migrate(Pizza)
+# db.migrate(Shop)
 
-klass_student_has_enrolled = Klass.objects.where(student_id__eq=s.id)
+#db.migrate(Student)
+# j = Juice.objects.insert(name="test")
+# pizza = Pizza.objects.insert(name="testp")
+# shop =  Shop.objects.insert(juices =j ,pizzas=pizza)
+# sj   = Shop.objects.get_one(id=2,fetch_relations=True)
+# print(sj.juices)
+# for j in sj.juices:
+#     print(j)
+# # Juice.objects.delete(id__eq=1)
+
+#d = Student.objects.insert(name='Vishnu',clas='10C',age=15)
+m = Student.objects.where(name='Vishnu',id__gt=8)
+print(m)
+s  = Pizza.objects.update(new_data={'name':'Paneer pizza'},id=1)
+print(s)
+students = Student.objects.all()
+print(students)
+
+db.migrate([Student,Pizza])
