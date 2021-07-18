@@ -12,7 +12,7 @@ with open(README_PATH) as readme_file:
 
 setup(
     name='vorm',
-    version='1.0.0',
+    version='0.0.1',
     packages=setuptools.find_packages(),
     include_packages_data=True,
     long_description_content_type='text/markdown',
@@ -21,7 +21,15 @@ setup(
     author="Vishnu Varthan",
     author_email="vishnulatha006@gmail.com",
     url="https://github.com/VarthanV/vorm",
-    install_requires=[],
+    install_requires=[
+        'autopep8==1.5.7'
+        'mysql-connector-python',
+        'protobuf==3.17.3',
+        'pycodestyle==2.7.0',
+        'six==1.16.0',
+        'toml==0.10.2',
+        'psycopg2-binary',
+    ],
     license="MIT License",
     zip_safe=False,
     keywords="orm,flask,django",

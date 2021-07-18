@@ -38,9 +38,10 @@
       <ul>
         <li><a href="#prerequisites">Prerequisites</a></li>
         <li><a href="#installation">Installation</a></li>
+            <li><a href="#commonly-faced-errors">Commonly faced errors</a></li>
       </ul>
     </li>
-    <li><a href="#Usage and Examples">Usage and Examples</a></li>
+    <li><a href="#usage-and-examples">Usage and Examples</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
@@ -67,14 +68,23 @@ Thanks for stopping here (:
 
 ## Getting Started
 
-### Installation
+## Installation
 
-Install the package from Pypi
+Install the package from Github
 
 ```sh
-pip install vorm
+git clone  https://github.com/VarthanV/vorm.git
+cd vorm
+python setup.py install
 ```
 
+### Commonly faced errors
+If you find mysql is missing or psycopg2 is missing you can install it manually and it will work
+
+```sh
+pip install mysql-connector-python
+pip install psycopg2-binary
+```
 <!-- USAGE EXAMPLES -->
 
 ## Usage and Examples
